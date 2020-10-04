@@ -1,6 +1,7 @@
 import os
 import sys
 from flask import Flask, render_template, request, jsonify, flash, send_from_directory
+from flask_migrate import Migrate
 from pandas import read_excel, read_sql_query
 from datetime import datetime
 from pytz import timezone
@@ -8,11 +9,11 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_admin import Admin, BaseView, expose
 from flask_admin.contrib.sqla import ModelView
 
-
 bangkok = timezone('Asia/Bangkok')
 
 db = SQLAlchemy()
 admin = Admin()
+migrate = Migrate()
 
 def create_app():
     if getattr(sys, 'frozen', False):
@@ -21,9 +22,10 @@ def create_app():
         app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
     else:
         app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///qrscan.db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres:///mtc-la2020'
     app.config['SECRET_KEY'] = 'mumtfightcovid19'
     db.init_app(app)
+    migrate.init_app(app, db)
     with app.app_context():
         db.create_all()
     admin.init_app(app)
@@ -35,6 +37,7 @@ class User(db.Model):
     id = db.Column('id', db.String(), primary_key=True)
     firstname = db.Column('firstname', db.String(), nullable=False)
     lastname = db.Column('lastname', db.String(), nullable=False)
+    line_id = db.Column('line_id', db.String())
 
     def __init__(self, id, firstname, lastname):
         self.id = id
@@ -100,8 +103,8 @@ admin.add_view(ExportView(name="Export", endpoint='export'))
 
 
 class UserAdminView(ModelView):
-    form_columns = ('id', 'firstname', 'lastname')
-    column_list = ('id', 'firstname', 'lastname')
+    form_columns = ('id', 'firstname', 'lastname', 'line_id')
+    column_list = ('id', 'firstname', 'lastname', 'line_id')
 
 
 admin.add_view(UserAdminView(User, db.session))
